@@ -94,7 +94,8 @@ def collect_costheta(
 
 def compute_orientation_vectors(atoms: Atoms, water_indices: list) -> list:
     """
-    Compute orientation vectors for given water molecule indices, considering minimum image convention.
+    Compute orientation vectors for given water molecule indices, considering minimum image
+    convention.
 
     Parameters:
         atoms (ase.Atoms): Structure that includes water molecules.
