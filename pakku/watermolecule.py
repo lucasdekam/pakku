@@ -5,7 +5,6 @@ Implementation of a WaterMolecule class
 from typing import List
 import numpy as np
 from ase import Atom, Atoms
-from ase.geometry import get_distances
 
 
 class WaterMolecule:
@@ -42,28 +41,19 @@ class WaterMolecule:
         """
         return self.oxygen.position
 
-    def get_orientation(self, cell, pbc) -> np.ndarray:
+    @property
+    def index(self) -> int:
         """
-        Get the dipole vector
+        Get the Atom index of the oxygen atom
         """
-        assert len(self.hydrogens) == 2, (
-            "This water molecule does not have two hydrogens, so a dipole vector "
-            "cannot be computed. Select for water molecules with the "
-            "WaterMolecule.is_h2o() method. "
-        )
+        return self.oxygen.index
 
-        # Compute bond vector
-        bond_vecs = [
-            get_distances(
-                p1=self.oxygen.position,
-                p2=h.position,
-                cell=cell,
-                pbc=pbc,
-            )[0].squeeze()
-            for h in self.hydrogens
-        ]
-        bisector = bond_vecs[0] + bond_vecs[1]
-        return bisector
+    @property
+    def indices(self) -> List[int]:
+        """
+        Get the Atom indices of the hydrogen atoms
+        """
+        return [self.oxygen.index] + [h.index for h in self.hydrogens]
 
     def add_hydrogen(self, hydrogen: Atom):
         """
