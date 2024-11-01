@@ -57,16 +57,18 @@ def identify_water_molecules(
     WaterMolecule objects.
     """
 
+    _, oh_distances = get_distances(
+        np.array([h.position for h in hydrogen_atoms]),
+        np.array([o.position for o in oxygen_atoms]),
+        cell=cell,
+        pbc=pbc,
+    )
+
+    nearest_o_indices = np.argmin(oh_distances, axis=1)
+
     water_molecules = [WaterMolecule(o) for o in oxygen_atoms]
 
-    for h in hydrogen_atoms:
-        _, oh_distances = get_distances(
-            h.position,
-            np.array([o.position for o in oxygen_atoms]),
-            cell=cell,
-            pbc=pbc,
-        )
-        index_o = np.argmin(oh_distances)
-        water_molecules[index_o].add_hydrogen(h)
+    for idx, h in zip(nearest_o_indices, hydrogen_atoms):
+        water_molecules[idx].add_hydrogen(h)
 
     return water_molecules
