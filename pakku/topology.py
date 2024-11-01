@@ -7,7 +7,6 @@ from typing import List
 import numpy as np
 from ase import Atom, Atoms
 from ase.geometry import get_distances
-from ase.cell import Cell
 
 from pakku.watermolecule import WaterMolecule  # TODO: from . import ... when installed
 
@@ -47,21 +46,22 @@ def get_atom_indices(atoms: Atoms, symbol: str) -> np.ndarray:
 
 
 def identify_water_molecules(
-    oxygen_atoms: List[Atom] | Atoms,
-    hydrogen_atoms: List[Atom] | Atoms,
-    cell: Cell,
-    pbc,
+    atoms: Atoms,
+    oxygen_indices: np.ndarray | None = None,
+    hydrogen_indices: np.ndarray | None = None,
 ) -> List[WaterMolecule]:
     """
     Assign water molecules to their closest oxygen atom to form
     WaterMolecule objects.
     """
+    hydrogen_atoms = get_atom_list(atoms, "H", hydrogen_indices)
+    oxygen_atoms = get_atom_list(atoms, "O", oxygen_indices)
 
     _, oh_distances = get_distances(
         np.array([h.position for h in hydrogen_atoms]),
         np.array([o.position for o in oxygen_atoms]),
-        cell=cell,
-        pbc=pbc,
+        cell=atoms.cell,
+        pbc=atoms.pbc,
     )
 
     nearest_o_indices = np.argmin(oh_distances, axis=1)
