@@ -41,7 +41,7 @@ def get_traj_water_positions(
 
         oxygen_positions += [w.position for w in water_molecules if w.is_waterlike()]
         n_frames += 1
-    # BUG: normalizing count by n_frames gives wrong density
+
     return np.array(oxygen_positions), n_frames
 
 
@@ -91,5 +91,5 @@ def get_traj_water_costheta(
     cos_theta = (orientation_vectors[:, axis]) / np.linalg.norm(
         orientation_vectors, axis=-1
     )
-    # BUG: normalizing count by n_frames gives wrong density
+
     return np.array(oxygen_positions)[:, axis], cos_theta, n_frames
