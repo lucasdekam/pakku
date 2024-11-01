@@ -104,14 +104,14 @@ def compute_orientation_vectors(atoms: Atoms, water_indices: list) -> list:
     Returns:
         np.ndarray: Orientation vectors for each water molecule.
     """
-    o_h1 = conditional_find_mic(
+    o_h1, _ = conditional_find_mic(
         np.array([atoms[h].position - atoms[o].position for o, h, _ in water_indices]),
         atoms.cell,
         atoms.pbc,
-    )[0]
-    o_h2 = conditional_find_mic(
+    )
+    o_h2, _ = conditional_find_mic(
         np.array([atoms[h].position - atoms[o].position for o, _, h in water_indices]),
         atoms.cell,
         atoms.pbc,
-    )[0]
+    )
     return [a + b for a, b in zip(o_h1, o_h2)]
