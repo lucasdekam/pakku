@@ -2,94 +2,115 @@
 Analysis of water simulation trajectories
 """
 
-from typing import Tuple
-
+from typing import Tuple, Iterable
 import numpy as np
-from ase.io import iread
+from ase import Atoms
+from ase.geometry import conditional_find_mic
 from tqdm import tqdm
 
-from pakku.topology import identify_water_molecules, get_atom_list
+from pakku.topology import identify_water_molecules
 
 
-def get_traj_water_positions(
-    traj_filename: str,
-    index=None,
-    fmt: str = None,
+def collect_positions(
+    reader: Iterable[Atoms],
+    strict: bool = False,
     oxygen_indices: np.ndarray | None = None,
     hydrogen_indices: np.ndarray | None = None,
 ) -> Tuple[np.ndarray, int]:
     """
-    Get the coordinates of water-like oxygen atoms over an entire
-    trajectory
+    Collect coordinates of water-like oxygen atoms over an entire trajectory.
 
-    Returns: list of oxygen coordinates (3-element np.ndarrays),
-    number of frames analyzed
+    Parameters:
+        reader (Iterable[ase.Atoms]): Trajectory frames reader, such as from ase.io.iread.
+        oxygen_indices (np.ndarray | None): Optional list of indices for oxygen atoms
+            to include in water molecule identification.
+        hydrogen_indices (np.ndarray | None): Optional list of indices for hydrogen atoms
+            to include in water molecule identification.
+        strict (bool): If True, re-identifies water molecules in every frame.
+            Improves accuracy but increases runtime (default is False).
+
+    Returns:
+        Tuple: (oxygen positions as list of 3-element np.ndarrays, number of frames analyzed).
     """
-    oxygen_positions = []
+    water_positions = []
     n_frames = 0
 
-    for atoms in tqdm(iread(traj_filename, index=index, format=fmt)):
-        o_atoms = get_atom_list(atoms, "O", oxygen_indices)
-        h_atoms = get_atom_list(atoms, "H", hydrogen_indices)
+    for atoms in tqdm(reader):
+        if n_frames == 0 or strict:
+            water_molecules = identify_water_molecules(
+                atoms,
+                oxygen_indices,
+                hydrogen_indices,
+            )
+            water_indices = [w.index for w in water_molecules if w.is_waterlike()]
 
-        water_molecules = identify_water_molecules(
-            o_atoms,
-            h_atoms,
-            atoms.cell,
-            atoms.pbc,
-        )
-
-        oxygen_positions += [w.position for w in water_molecules if w.is_waterlike()]
+        water_positions += [atoms[i].position for i in water_indices]
         n_frames += 1
 
-    return np.array(oxygen_positions), n_frames
+    return np.array(water_positions), n_frames
 
 
-def get_traj_water_costheta(
-    traj_filename: str,
-    index=None,
-    fmt: str = None,
+def collect_costheta(
+    reader: Iterable[Atoms],
     axis: int = 2,
+    strict: bool = False,
     oxygen_indices: np.ndarray | None = None,
     hydrogen_indices: np.ndarray | None = None,
 ) -> Tuple[np.ndarray, np.ndarray, int]:
     """
-    Get the coordinates of oxygen atoms corresponding to H2O molecules,
-    and calculate cos theta (cos of the angle w.r.t. the specified axis).
+    Collect oxygen atom coordinates for H2O molecules, calculate cos(theta) w.r.t. specified axis.
 
-    Returns: list of oxygen coordinates (3-element np.ndarrays),
-    list of cos theta for the corresponding water molecules, number of frames analyzed
+    Parameters:
+        reader (Iterable[Atoms]): Trajectory frames.
+        axis (int): Axis (0=x, 1=y, 2=z) for cos(theta) projection.
+        strict (bool): Re-identify water molecules every frame if True.
+
+    Returns:
+        Tuple: (oxygen positions along the specified axis, cos(theta), number of frames).
     """
-    oxygen_positions = []
-    orientation_vectors = []
+    water_positions = []
+    orientation = []
     n_frames = 0
 
-    for atoms in tqdm(iread(traj_filename, index=index, format=fmt)):
-        o_atoms = get_atom_list(atoms, "O", oxygen_indices)
-        h_atoms = get_atom_list(atoms, "H", hydrogen_indices)
-
-        water_molecules = identify_water_molecules(
-            o_atoms,
-            h_atoms,
-            atoms.cell,
-            atoms.pbc,
-        )
-
-        oxygen_positions += [w.position for w in water_molecules if w.is_h2o()]
-        orientation_vectors += [
-            w.get_orientation(
-                cell=atoms.cell,
-                pbc=atoms.pbc,
+    for atoms in tqdm(reader):
+        if n_frames == 0 or strict:
+            water_molecules = identify_water_molecules(
+                atoms,
+                oxygen_indices,
+                hydrogen_indices,
             )
-            for w in water_molecules
-            if w.is_h2o()
-        ]
+            water_indices = [w.indices for w in water_molecules if w.is_h2o()]
+
+        water_positions.extend([atoms[i].position for i, _, _ in water_indices])
+        orientation.extend(compute_orientation_vectors(atoms, water_indices))
         n_frames += 1
 
     # Project dipole vector on main axis
-    orientation_vectors = np.array(orientation_vectors)
-    cos_theta = (orientation_vectors[:, axis]) / np.linalg.norm(
-        orientation_vectors, axis=-1
-    )
+    orientation = np.array(orientation)
+    cos_theta = orientation[:, axis] / np.linalg.norm(orientation, axis=-1)
 
-    return np.array(oxygen_positions)[:, axis], cos_theta, n_frames
+    return np.array(water_positions)[:, axis], cos_theta, n_frames
+
+
+def compute_orientation_vectors(atoms: Atoms, water_indices: list) -> list:
+    """
+    Compute orientation vectors for given water molecule indices, considering minimum image convention.
+
+    Parameters:
+        atoms (ase.Atoms): Structure that includes water molecules.
+        water_indices (list): Lists of indices for oxygen and two hydrogens in each water molecule.
+
+    Returns:
+        np.ndarray: Orientation vectors for each water molecule.
+    """
+    o_h1 = conditional_find_mic(
+        np.array([atoms[h].position - atoms[o].position for o, h, _ in water_indices]),
+        atoms.cell,
+        atoms.pbc,
+    )
+    o_h2 = conditional_find_mic(
+        np.array([atoms[h].position - atoms[o].position for o, _, h in water_indices]),
+        atoms.cell,
+        atoms.pbc,
+    )
+    return o_h1 + o_h2
