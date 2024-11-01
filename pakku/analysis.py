@@ -8,7 +8,7 @@ from ase import Atoms
 from ase.geometry import conditional_find_mic
 from tqdm import tqdm
 
-from pakku.topology import identify_water_molecules
+from pakku.topology import identify_water_molecules  # TODO: change when packaging
 
 
 def collect_positions(
@@ -108,10 +108,10 @@ def compute_orientation_vectors(atoms: Atoms, water_indices: list) -> list:
         np.array([atoms[h].position - atoms[o].position for o, h, _ in water_indices]),
         atoms.cell,
         atoms.pbc,
-    )
+    )[0]
     o_h2 = conditional_find_mic(
         np.array([atoms[h].position - atoms[o].position for o, _, h in water_indices]),
         atoms.cell,
         atoms.pbc,
-    )
-    return o_h1 + o_h2
+    )[0]
+    return [a + b for a, b in zip(o_h1, o_h2)]
