@@ -58,6 +58,7 @@ def collect_costheta(
     strict: bool = False,
     oxygen_indices: Optional[np.ndarray] = None,
     hydrogen_indices: Optional[np.ndarray] = None,
+    surface_indices: Optional[np.ndarray] = None,
 ) -> Tuple[np.ndarray, np.ndarray, int]:
     """
     Collect coordinates of oxygen atoms over an entire trajectory and calculate
@@ -82,6 +83,9 @@ def collect_costheta(
     n_frames = 0
 
     for atoms in tqdm(reader):
+        # Get surface position
+        z_reference = get_cell_reference_coord(atoms, surface_indices, axis)
+
         # Identify water molecules in the first frame or if strict checking is enabled
         if n_frames == 0 or strict:
             water_molecules = identify_water_molecules(
@@ -97,9 +101,36 @@ def collect_costheta(
             z_coord, cos_theta = molecule.cos_theta(
                 cell=atoms.cell, pbc=atoms.pbc, axis=axis
             )
-            water_positions.append(z_coord)
+            water_positions.append(z_coord - z_reference)
             cos_theta_values.append(cos_theta)
 
         n_frames += 1
 
     return np.array(water_positions), np.array(cos_theta_values), n_frames
+
+
+def get_cell_reference_coord(
+    atoms: Atoms,
+    surface_indices: Optional[np.ndarray],
+    axis: int,
+) -> float:
+    """
+    Determine the reference z-coordinate of a simulation cell.
+    If surface indices for two surfaces are provided, finds the midpoint between the
+    lowest and highest surface atoms; otherwise, defaults to 0.
+
+    Parameters:
+        atoms (Atoms): ASE Atoms object representing the system.
+        surface_indices (N x M np.ndarray | None): Indices of surface atoms in the cell,
+            where N is the number of surfaces in the cell (1 or 2) and M is the number
+            of atoms in the surface.
+
+    Returns:
+        float: Reference z-coordinate in the cell.
+    """
+    if surface_indices is not None:
+        surface_indices = np.atleast_2d(surface_indices)
+        z_surface = [np.mean(atoms[s].positions[:, axis]) for s in surface_indices]
+        return min(z_surface) + 0.5 * (max(z_surface) - min(z_surface))
+
+    return 0.0
