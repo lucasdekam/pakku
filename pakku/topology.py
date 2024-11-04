@@ -74,6 +74,16 @@ def identify_water_molecules(
     return water_molecules
 
 
+def atom_symbol_assertion(atom: Atom, symbol: str) -> None:
+    """
+    Check whether atom has a certain element symbol
+    """
+    assert atom.symbol == symbol, (
+        f"Tried updating {atom} with an Atom that is not {symbol}."
+        "Indices of different frames might correspond to different atoms."
+    )
+
+
 def update_water_molecules(
     atoms: Atoms,
     water_molecules=List[WaterMolecule],
@@ -83,7 +93,8 @@ def update_water_molecules(
     the same indices as before
     """
     for molecule in water_molecules:
+        atom_symbol_assertion(atoms[molecule.index], "O")
         molecule.oxygen.position = atoms[molecule.index].position
-        h_indices = molecule.h_indices
-        for h_atom, h_ind in zip(molecule.hydrogens, h_indices):
+        for h_atom, h_ind in zip(molecule.hydrogens, molecule.h_indices):
+            atom_symbol_assertion(atoms[h_ind], "H")
             h_atom.position = atoms[h_ind].position
