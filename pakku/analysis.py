@@ -90,12 +90,7 @@ def collect_costheta(
                 hydrogen_indices,
             )
         else:
-            # old_pos = water_molecules[0].position
             update_water_molecules(atoms, water_molecules)
-            for mole in water_molecules:
-                assert (
-                    mole.position == atoms[mole.index].position
-                ).all(), f"position {mole.position} not equal to {atoms[mole.index].position}"
 
         # Collect positions and orientation information
         for molecule in water_molecules:
