@@ -105,7 +105,7 @@ class WaterMolecule:
         Tuple[float, Optional[float]]
             - The position along the specified axis (`self.position[axis]`) of the oxygen atom.
             - The cosine of the angle (θ) between the orientation vector and the specified axis.
-              Returns `None` if the molecule is not H₂O.
+              Returns `np.nan` if the molecule is not H₂O.
         """
         if self.is_h2o():
             o_h1, _ = find_mic(self.hydrogens[0].position - self.position, cell, pbc)
@@ -113,7 +113,7 @@ class WaterMolecule:
             orientation_vector = o_h1.squeeze() + o_h2.squeeze()
             cos_theta = orientation_vector[axis] / np.linalg.norm(orientation_vector)
         else:
-            cos_theta = None
+            cos_theta = np.nan
         return self.position[axis], cos_theta
 
     # TODO: def __len__
