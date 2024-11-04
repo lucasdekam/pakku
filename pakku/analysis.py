@@ -74,7 +74,7 @@ def collect_costheta(
             to include in water molecule identification.
 
     Returns:
-        Tuple: (oxygen positions, cos(theta) values with None for non-H2O molecules,
+        Tuple: (oxygen positions, cos(theta) values with np.nan for non-H2O molecules,
                 number of frames analyzed).
     """
     water_positions = []
