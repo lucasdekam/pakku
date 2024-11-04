@@ -2,9 +2,10 @@
 Implementation of a WaterMolecule class
 """
 
-from typing import List
+from typing import List, Tuple, Optional
 import numpy as np
 from ase import Atom, Atoms
+from ase.geometry import find_mic
 
 
 class WaterMolecule:
@@ -26,7 +27,7 @@ class WaterMolecule:
     def __init__(
         self,
         oxygen: Atom,
-        hydrogens: List[Atom] | None = None,
+        hydrogens: Optional[List[Atom]] = None,
     ):
         self.oxygen = oxygen
         if hydrogens is not None:
@@ -49,11 +50,11 @@ class WaterMolecule:
         return self.oxygen.index
 
     @property
-    def indices(self) -> List[int]:
+    def h_indices(self) -> List[int]:
         """
         Get the Atom indices of the hydrogen atoms
         """
-        return [self.oxygen.index] + [h.index for h in self.hydrogens]
+        return [h.index for h in self.hydrogens]
 
     def add_hydrogen(self, hydrogen: Atom):
         """
@@ -61,7 +62,7 @@ class WaterMolecule:
         """
         self.hydrogens.append(hydrogen)
 
-    def to_ase_atoms(self, cell: np.ndarray = None, pbc: np.ndarray = False):
+    def to_ase_atoms(self, cell: Optional[np.ndarray] = None, pbc: np.ndarray = False):
         """
         Convert the WaterMolecule to an ase.Atoms object (loss of Atom indices).
         """
@@ -78,6 +79,42 @@ class WaterMolecule:
         Returns True if the object has one, two or three hydrogens
         """
         return 1 <= len(self.hydrogens) <= 3
+
+    def cos_theta(
+        self,
+        axis: int = 2,
+        cell: Optional[np.ndarray] = None,
+        pbc: np.ndarray | List[bool] | bool = False,
+    ) -> Tuple[float, Optional[float]]:
+        """
+        Calculate the cosine of the angle (θ) between the orientation vector of a water molecule
+        and a specified axis in the simulation cell.
+
+        Parameters
+        ----------
+        cell : np.ndarray
+            The simulation cell matrix, defining the periodic boundaries.
+        pbc : np.ndarray or List[bool]
+            The periodic boundary conditions along each cell dimension.
+        axis : int, optional
+            The axis (0, 1, or 2 for x, y, or z) to calculate the cosine projection along.
+            Default is 2 (z-axis).
+
+        Returns
+        -------
+        Tuple[float, Optional[float]]
+            - The position along the specified axis (`self.position[axis]`) of the oxygen atom.
+            - The cosine of the angle (θ) between the orientation vector and the specified axis.
+              Returns `None` if the molecule is not H₂O.
+        """
+        if self.is_h2o():
+            o_h1, _ = find_mic(self.hydrogens[0].position - self.position, cell, pbc)
+            o_h2, _ = find_mic(self.hydrogens[1].position - self.position, cell, pbc)
+            orientation_vector = o_h1.squeeze() + o_h2.squeeze()
+            cos_theta = orientation_vector[axis] / np.linalg.norm(orientation_vector)
+        else:
+            cos_theta = None
+        return self.position[axis], cos_theta
 
     # TODO: def __len__
 

@@ -72,3 +72,18 @@ def identify_water_molecules(
         water_molecules[idx].add_hydrogen(h)
 
     return water_molecules
+
+
+def update_water_molecules(
+    atoms: Atoms,
+    water_molecules=List[WaterMolecule],
+) -> None:
+    """
+    Update positions of the Atom objects in the WaterMolecules, using
+    the same indices as before
+    """
+    for molecule in water_molecules:
+        molecule.oxygen.position = atoms[molecule.index].position
+        h_indices = molecule.h_indices
+        for h_atom, h_ind in zip(molecule.hydrogens, h_indices):
+            h_atom.position = atoms[h_ind].position
