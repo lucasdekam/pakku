@@ -73,3 +73,38 @@ def water_density_profile(
     x = bin_edges_to_grid(bin_edges)
     rho = water_density(counts / n_frames, area * bin_size)
     return x, rho
+
+
+def adsorbed_water_stats(
+    water_positions: np.ndarray,
+    cos_theta_values: np.ndarray,
+    n_frames: int,
+    area: float,
+    surface_pos: Tuple[float] | float = 0,
+    interval: Tuple[float] = (0, 2.7),
+):
+    """
+    TODO
+    """
+    surface_pos = np.atleast_1d(surface_pos)
+    assert len(surface_pos) == 1 or len(surface_pos) == 2, "Need one or two surfaces"
+
+    mask = (water_positions > min(surface_pos) + interval[0]) & (
+        water_positions <= min(surface_pos) + interval[1]
+    )
+    n_water = np.count_nonzero(mask)
+    theta = np.arccos(cos_theta_values[mask.flatten()]) / np.pi * 180
+
+    if len(surface_pos) == 2:
+        mask_hi = (water_positions < max(surface_pos) - interval[0]) & (
+            water_positions >= max(surface_pos) - interval[1]
+        )
+        n_water += np.count_nonzero(mask_hi)
+        theta_hi = 180 - np.arccos(cos_theta_values[mask_hi.flatten()]) / np.pi * 180
+        theta = np.concatenate([theta, theta_hi])
+
+    density, bin_edges = np.histogram(theta, bins=45, range=(0.0, 180.0), density=True)
+    angle_grid = bin_edges_to_grid(bin_edges)
+
+    coverage = n_water / n_frames / area
+    return coverage, angle_grid, density
